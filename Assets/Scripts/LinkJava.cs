@@ -161,13 +161,17 @@ public class LinkJava : MonoBehaviour
 		else 
 		{
             UnityEngine.Debug.Log("Waiting for process to complete");
-            while (!externalProcess.HasExited) 
+            bool forceFail = false;
+            float startTime = Time.unscaledTime;
+            while (!externalProcess.HasExited && !forceFail) 
 			{
                 //UnityEngine.Debug.Log("Process exited? " + externalProcess.HasExited);
+                forceFail = (Time.unscaledTime - startTime > 10f);
                 yield return null;
             }
             UnityEngine.Debug.Log("Process has completed");
-            int ExitCode = externalProcess.ExitCode;
+            
+            int ExitCode = forceFail ? -1 : externalProcess.ExitCode;
 			string mpout = "";
 			string line = null;
 			string filename = "";
@@ -179,7 +183,8 @@ public class LinkJava : MonoBehaviour
 			mpout += "Exit code: "+ExitCode.ToString ();
             UnityEngine.Debug.Log(line);
             UnityEngine.Debug.Log(mpout);
-			UnityEngine.Debug.Log ("Java finished here...");
+            
+            UnityEngine.Debug.Log ("Java finished here...");
 			if (ExitCode == 0) 
 			{
 				UnityEngine.Debug.Log (externalProcess.StartInfo.Arguments);	
@@ -202,8 +207,17 @@ public class LinkJava : MonoBehaviour
 			} 
 			else 
 			{
-				UnityEngine.Debug.LogError (mpout);	
-				UnityEngine.Debug.LogError (externalProcess.StartInfo.Arguments);	
+                if (forceFail)
+                {
+                    UnityEngine.Debug.LogError("LinkJava timed out.");
+                    bool restartPhase = (simulationMode == SimulationTypes.PCG);
+                    GameManager.Instance.SetGamePhase(GameManager.GamePhases.LoadScreen);
+                }
+                else
+                {
+                    UnityEngine.Debug.LogError(mpout);
+                    UnityEngine.Debug.LogError(externalProcess.StartInfo.Arguments);
+                }
 				simulationFeedback = SimulationFeedback.failure;
 			}
 				
